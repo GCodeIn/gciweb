@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+import os
+import sys
+import json
+import shutil
+def generate_doc(path):
+    print('generating /{}'.format(path[6:]))
+    with open('{}/data.json'.format(path), 'r') as f:
+        config = json.load(f)
+
+    template = 'templates/{}.html'.format(config['template'])
+    
+    with open(template, 'r') as f:
+        document = f.read()
+
+    for key in config.keys():
+        document = document.replace('{{{' + key + '}}}', config[key])
+
+    for subdoc in os.scandir(path):
+        if subdoc.is_dir():
+            generate_doc('{}/{}'.format(path, subdoc.name))
+        elif subdoc.name.endswith('.html'):
+            with open('{}/{}'.format(path, subdoc.name), 'r') as f:
+                text = f.read()
+
+            document = document.replace('{{' + subdoc.name[:-5] + '}}', text)
+    
+    target = 'built/{}'.format(path[6:])
+    os.makedirs(target, exist_ok=True)
+    with open('{}/index.html'.format(target), 'w+') as f:
+        f.write(document)
+    print('generated /{}'.format(path[6:]))
+
+if len(sys.argv) > 1:
+    os.chdir(sys.argv[1])
+
+print('clearing old build')
+try:
+    shutil.rmtree('built')
+except:
+    pass
+print('cleared build')
+generate_doc('pages')
+print('copying assets')
+shutil.copytree('assets', 'built/assets')
+print('copyed assets')
+working_directory = os.getcwd()
+print('built in {}/built'.format(working_directory))
